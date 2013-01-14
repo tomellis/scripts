@@ -51,4 +51,13 @@ conn = boto.connect_ec2(aws_access_key_id=access_key,
                         path="/services/Eucalyptus")
 
 # Run commands
-conn.terminate_instances([reservation.instances[0].id for reservation in conn.get_all_instances()])
+instances = conn.get_all_instances()
+print instances
+for reserv in instances:
+    for inst in reserv.instances:
+        if inst.state == u'running':
+            print "Terminating instance %s" % inst
+            inst.terminate()
+        if inst.state == u'terminated':
+            print "Cleaning up previously terminated instance %s" % inst
+            inst.terminate()
