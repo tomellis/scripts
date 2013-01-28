@@ -33,7 +33,6 @@ backup() {
             rm -f "$TEMPFILE"
             exit 1
     fi
-   fi
     rm -f "$TEMPFILE"
 }
  
