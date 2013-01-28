@@ -4,7 +4,7 @@
 #
 # Software License Agreement (BSD License)
 #
-# Copyright (c) 2012, Eucalyptus Systems, Inc.
+# Copyright (c) 2013, Eucalyptus Systems, Inc.
 # All rights reserved.
 #
 # Redistribution and use of this software in source and binary forms, with or
@@ -71,8 +71,7 @@ def get_args():
         sys.exit(1)
     return options
 
-if __name__ == "__main__":
-
+def backup():
     # is the db running? socket should exist
     if not os.path.exists(db_socket):
         logging.critical("PostgreSQL database not running. Please start eucalyptus-cloud.")
@@ -88,15 +87,15 @@ if __name__ == "__main__":
         logging.warn("Backup directory %s does not exist, creating...", (pg_dumpall_path))
         os.mkdir(backup_dir)
 
-##########
-# Backup #
-##########
+    ##########
+    # Backup #
+    ##########
 
-# Trying...
-# 1. pg_dumpall
-# 2. pg_dump each eucalyptus db
-# 3. db dir backup
-# 4. Eucalyptus keys dir
+    # Trying...
+    # 1. pg_dumpall
+    # 2. pg_dump each eucalyptus db
+    # 3. db dir backup
+    # 4. Eucalyptus keys dir
 
     # Create a subdir for today
     if not os.path.exists(backup_subdir):
@@ -105,6 +104,7 @@ if __name__ == "__main__":
     # Run a pg_dumpall dump
     logging.info("Running pg_dumpall backup")
     dump_all="nice -n 19 pg_dumpall -h%s -p%s -U%s -f%s" % (db_dir, db_port, db_user, backup_file)
+    #dump_all="nice -n 19 pg_dumpall --oids -c -h%s -p%s -U%s -f%s" % (db_dir, db_port, db_user, backup_file)
     os.popen(dump_all)
     logging.info("pg_dumpall complete: %s", (backup_file))
 
@@ -113,6 +113,7 @@ if __name__ == "__main__":
 
     # Dump only global objects (roles and tablespaces) which include system grants
     system_grants = "pg_dumpall -h%s -p%s -U%s -g > %s/system.%s.gz" % (db_dir, db_port, db_user, backup_subdir, date_fmt)
+    #system_grants = "pg_dumpall --oids -c -h%s -p%s -U%s -g > %s/system.%s.gz" % (db_dir, db_port, db_user, backup_subdir, date_fmt)
 
     logging.info("Backing up global objects")
     os.popen(system_grants)
@@ -122,11 +123,23 @@ if __name__ == "__main__":
         base = base.strip()
         filename = "%s/%s-%s.sql" % (backup_subdir, base, date)
         dump_cmd = "nice -n 19 pg_dump -C -F c -U%s -p%s -h%s %s > %s" % (db_user, db_port, db_dir, base, filename) 
+        #dump_cmd = "nice -n 19 pg_dump --oids -C -F c -U%s -p%s -h%s %s > %s" % (db_user, db_port, db_dir, base, filename) 
         logging.debug("Running pg_dump on %s", (base))
         os.popen(dump_cmd)
 
     logging.info("Backup complete")
 
+# Start Eucalyptus PostgreSQL DB
+def startdb():
+    os.popen("su eucalyptus -c '/usr/pgsql-9.1/bin/pg_ctl start -w -s -D/var/lib/eucalyptus/db/data -o '-h0.0.0.0/0 -p8777 -i''")
+
+# Stop Eucalyptus PostgreSQL DB
+def stopdb():
+    os.popen("su eucalyptus -c '/usr/pgsql-9.1/bin/pg_ctl stop -D/var/lib/eucalyptus/db/data'")
+
+
+if __name__ == "__main__":
+backup()
 
 #### 
 # Restore
